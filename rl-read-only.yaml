@@ -1,0 +1,218 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: RedLock IAM Role to set read permissions
+Parameters:
+  RedlockRoleName:
+    Type: String
+    Description: 'Provide an role ARN name (Example: RedlockReadOnlyRole)'
+    AllowedPattern: '[-_a-zA-Z0-9]*'
+    Default: "RedlockReadOnlyRole"
+  ExternalID:
+    Type: String
+    Description: 'Provide an ExternalID (Example: Xoih821ddwf)'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+    ConstraintDescription: 'ExternalID must contain alphanumeric characters and only
+      these special characters are allowed =,.@:/-. '
+  RedlockUsername:
+    Type: String
+    Description: 'Provide the Redlock.io username, preferably an onboarding only account.'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+  RedlockPassword:
+    Type: String
+    Description: 'Password for Redlock.io'
+    MinLength: '1'
+  RedlockCustomerName:
+    Type: String
+    Description: 'The designed company name assigned within Redlock.io'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+  RedlockAccountName:
+    Type: String
+    Description: 'Provide a unique name for the AWS account within Redlock.io'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+  RedlockTenant:
+    Type: String
+    Description: 'Specify the Redlock.io tenant your account is provisioned on'
+    MinLength: '1'
+    AllowedValues: ["app", "app2"]
+  EnableCloudTrailLogs:
+    Type: String
+    Description: 'Check for multi-region trail and create a new one if one does not exist'
+    Default: 'false'
+    AllowedValues: ["true", "false"]
+  EnableVpcFlowLogs:
+    Type: String
+    Description: 'Enable VpcFlowLogs for each of the Vpcs in your account if one does not exist'
+    Default: 'false'
+    AllowedValues: ["true", "false"]
+Conditions:
+  ShouldCreateCloudTrail:
+    !Equals [true, !Ref EnableCloudTrailLogs]
+  ShouldCreateVpcFlowLogs:
+    !Equals [true, !Ref EnableVpcFlowLogs]
+  ShouldCreateLambda:
+    Fn::Or: [Condition: ShouldCreateCloudTrail, Condition: ShouldCreateVpcFlowLogs]
+Resources:
+  RedlockRole:
+    Type: AWS::IAM::Role
+    Properties:
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/SecurityAudit
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::188619942792:root
+            Action: sts:AssumeRole
+            Condition:
+              StringEquals:
+                sts:ExternalId: !Ref 'ExternalID'
+      Policies:
+        - PolicyName: Redlock-IAM-ReadOnly-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - acm:List*
+                  - apigateway:GET
+                  - appstream:Describe*
+                  - cloudtrail:GetEventSelectors
+                  - cloudtrail:LookupEvents
+                  - cloudsearch:Describe*
+                  - dynamodb:DescribeTable
+                  - ds:Describe*
+                  - elasticache:List*
+                  - eks:List*
+                  - eks:Describe*
+                  - elasticfilesystem:Describe*
+                  - elasticmapreduce:Describe*
+                  - elasticmapreduce:List*
+                  - inspector:Describe*
+                  - inspector:List*
+                  - glacier:List*
+                  - glacier:Get*
+                  - guardduty:List*
+                  - guardduty:Get*
+                  - iam:SimulatePrincipalPolicy
+                  - iam:SimulateCustomPolicy
+                  - kinesis:Describe*
+                  - kinesis:List*
+                  - rds:ListTagsForResource
+                  - sns:List*
+                  - sns:Get*
+                  - sqs:SendMessage
+                  - logs:FilterLogEvents
+                  - logs:Get*
+                  - logs:Describe*
+                  - secretsmanager:List*
+                  - secretsmanager:Describe*
+                  - lambda:List*
+                  - s3:GetAccountPublicAccessBlock
+                  - s3:GetBucketPublicAccessBlock
+                Effect: Allow
+                Resource: '*'
+      RoleName: !Ref 'RedlockRoleName'
+  LambdaOnboardRole: 
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: Redlock-IAM-ReadOnly-Policy
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Action:
+                  - cloudtrail:CreateTrail
+                  - cloudtrail:GetTrailStatus
+                  - cloudtrail:GetEventSelectors
+                  - cloudtrail:DescribeTrails
+                  - s3:CreateBucket
+                  - s3:PutBucketPolicy
+                  - sts:GetCallerIdentity
+                  - ec2:DescribeRegions
+                  - ec2:CreateFlowLogs
+                  - ec2:DescribeVpcs
+                  - ec2:DescribeFlowLogs
+                  - logs:DescribeLogGroups
+                  - logs:CreateLogGroup
+                  - iam:CreatePolicy
+                  - iam:CreateRole
+                  - iam:AttachPolicy
+                Effect: Allow
+                Resource: '*'
+  LambdaFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: "LambdaOnboardRedlock"
+      Description: Onboarding Script for Redlock
+      Runtime: python2.7
+      Code:
+        S3Bucket: "onboardredlock"
+        S3Key: onboard.zip
+      Handler: onboard_rl.main
+      MemorySize: 128
+      Timeout: 900
+      Role:
+        Fn::GetAtt:
+          - LambdaOnboardRole
+          - Arn
+      Environment:
+        Variables:
+          REDLOCK_USER_NAME:
+            !Ref RedlockUsername 
+          REDLOCK_PASSWORD: 
+            !Ref RedlockPassword
+          REDLOCK_CUSTOMER_NAME:
+            !Ref RedlockCustomerName
+          REDLOCK_ACCOUNT_NAME:
+            !Ref RedlockAccountName
+          REDLOCK_TENANT:
+            !Ref RedlockTenant
+          REDLOCK_VPC:
+            !If [ShouldCreateCloudTrail, true, false]
+          REDLOCK_CLOUDTRAIL:
+            !If [ShouldCreateVpcFlowLogs, true, false]
+          EXTERNAL_ID:
+            !Ref ExternalID
+          ROLE_NAME:
+            !Ref RedlockRoleName
+  OnboardScript:
+    Type: Custom::OnboardRedlockScript
+    Properties:
+      ServiceToken: !GetAtt LambdaFunction.Arn
+    DependsOn: LambdaFunction
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      -
+        Label:
+          default: "Redlock Account Information"
+        Parameters:
+          - RedlockUsername
+          - RedlockPassword
+          - RedlockCustomerName
+          - RedlockAccountName
+          - RedlockTenant       
+      - 
+        Label:
+          default: "AWS Configuration"
+        Parameters:
+          - RedlockRoleName
+          - ExternalID
+          - EnableCloudTrailLogs
+          - EnableVpcFlowLogs
+ 
+Outputs:
+  RedlockRoleName:
+    Value: !Ref 'RedlockRoleName'
+    Description: Redlock IAM role name
