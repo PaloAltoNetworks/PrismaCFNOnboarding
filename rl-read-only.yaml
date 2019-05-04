@@ -155,6 +155,9 @@ Resources:
                   - iam:CreatePolicy
                   - iam:CreateRole
                   - iam:AttachPolicy
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
                 Effect: Allow
                 Resource: '*'
   LambdaFunction:
