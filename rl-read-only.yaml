@@ -26,12 +26,12 @@ Parameters:
     Type: String
     Description: 'The designed company name assigned within Redlock.io'
     MinLength: '1'
-    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
   RedlockAccountName:
     Type: String
     Description: 'Provide a unique name for the AWS account within Redlock.io'
     MinLength: '1'
-    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
   RedlockTenant:
     Type: String
     Description: 'Specify the Redlock.io tenant your account is provisioned on'
