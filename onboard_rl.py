@@ -348,7 +348,6 @@ def timeout_handler(_signal, _frame):
     
 
 def main(event, context):
-  start(globalVars)
   try:
       LOGGER.info('REQUEST RECEIVED:\n %s', event)
       LOGGER.info('REQUEST RECEIVED:\n %s', context)
@@ -356,6 +355,7 @@ def main(event, context):
           LOGGER.info('CREATE!')
           send_response(event, context, "SUCCESS",
                         {"Message": "Resource creation successful!"})
+          start(globalVars)
       elif event['RequestType'] == 'Update':
           LOGGER.info('UPDATE!')
           send_response(event, context, "SUCCESS",
