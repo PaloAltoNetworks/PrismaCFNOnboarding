@@ -82,18 +82,24 @@ Resources:
                   - cloudtrail:GetEventSelectors
                   - cloudtrail:LookupEvents
                   - cloudsearch:Describe*
+                  - cognito-identity:ListTagsForResource
+                  - cognito-idp:ListTagsForResource
                   - dynamodb:DescribeTable
                   - ds:Describe*
                   - elasticache:List*
                   - eks:List*
                   - eks:Describe*
+                  - elasticbeanstalk:ListTagsForResource
                   - elasticfilesystem:Describe*
                   - elasticmapreduce:Describe*
                   - elasticmapreduce:List*
                   - inspector:Describe*
                   - inspector:List*
                   - glacier:List*
-                  - glacier:Get*
+                  - glacier:GetVaultAccessPolicy
+                  - glacier:GetVaultNotifications
+                  - glacier:GetVaultLock
+                  - glacier:GetDataRetrievalPolicy
                   - guardduty:List*
                   - guardduty:Get*
                   - iam:SimulatePrincipalPolicy
@@ -103,6 +109,8 @@ Resources:
                   - rds:ListTagsForResource
                   - sns:List*
                   - sns:Get*
+                  - ssm:GetParameters
+                  - ssm:ListTagsForResource
                   - sqs:SendMessage
                   - logs:FilterLogEvents
                   - logs:Get*
