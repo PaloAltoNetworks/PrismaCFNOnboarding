@@ -43,6 +43,12 @@ if os.environ["REDLOCK_TENANT"]=="app":
   tenant="api"
 elif os.environ["REDLOCK_TENANT"]=="app2":
   tenant="api2"
+elif os.environ["REDLOCK_TENANT"]=="app3":
+  tenant="api3"
+elif os.environ["REDLOCK_TENANT"]=="app.eu":
+  tenant="api.eu"
+elif os.environ["REDLOCK_TENANT"]=="app.anz":
+  tenant="api.anz"
 enablevpc = os.environ["REDLOCK_VPC"]
 enablecloudtrail = os.environ["REDLOCK_CLOUDTRAIL"]
 ExternalID = os.environ["EXTERNAL_ID"]

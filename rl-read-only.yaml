@@ -36,7 +36,7 @@ Parameters:
     Type: String
     Description: 'Specify the Redlock.io tenant your account is provisioned on'
     MinLength: '1'
-    AllowedValues: ["app", "app2"]
+    AllowedValues: ["app", "app2", "app3", "app.eu", "app.anz"]
   EnableCloudTrailLogs:
     Type: String
     Description: 'Check for multi-region trail and create a new one if one does not exist'
