@@ -1,11 +1,11 @@
 AWSTemplateFormatVersion: '2010-09-09'
-Description: RedLock IAM Role to set read permissions
+Description: Prisma IAM Role to set read permissions
 Parameters:
-  RedlockRoleName:
+  PrismaRoleName:
     Type: String
-    Description: 'Provide an role ARN name (Example: RedlockReadOnlyRole)'
+    Description: 'Provide an role ARN name (Example: PrismaReadOnlyRole)'
     AllowedPattern: '[-_a-zA-Z0-9]*'
-    Default: "RedlockReadOnlyRole"
+    Default: "PrismaReadOnlyRole"
   ExternalID:
     Type: String
     Description: 'Provide an ExternalID (Example: Xoih821ddwf)'
@@ -13,28 +13,28 @@ Parameters:
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
     ConstraintDescription: 'ExternalID must contain alphanumeric characters and only
       these special characters are allowed =,.@:/-. '
-  RedlockUsername:
+  PrismaUsername:
     Type: String
-    Description: 'Provide the Redlock.io username, preferably an onboarding only account.'
+    Description: 'Provide the Prisma.io username, preferably an onboarding only account.'
     MinLength: '1'
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_]*'
-  RedlockPassword:
+  PrismaPassword:
     Type: String
-    Description: 'Password for Redlock.io'
+    Description: 'Password for Prisma.io'
     MinLength: '1'
-  RedlockCustomerName:
+  PrismaCustomerName:
     Type: String
-    Description: 'The designed company name assigned within Redlock.io'
-    MinLength: '1'
-    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
-  RedlockAccountName:
-    Type: String
-    Description: 'Provide a unique name for the AWS account within Redlock.io'
+    Description: 'The designed company name assigned within Prisma.io'
     MinLength: '1'
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
-  RedlockTenant:
+  PrismaAccountName:
     Type: String
-    Description: 'Specify the Redlock.io tenant your account is provisioned on'
+    Description: 'Provide a unique name for the AWS account within Prisma.io'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
+  PrismaTenant:
+    Type: String
+    Description: 'Specify the Prisma.io tenant your account is provisioned on'
     MinLength: '1'
     AllowedValues: ["app", "app2", "app3", "app.eu", "app.anz"]
   EnableCloudTrailLogs:
@@ -55,7 +55,7 @@ Conditions:
   ShouldCreateLambda:
     Fn::Or: [Condition: ShouldCreateCloudTrail, Condition: ShouldCreateVpcFlowLogs]
 Resources:
-  RedlockRole:
+  PrismaRole:
     Type: AWS::IAM::Role
     Properties:
       ManagedPolicyArns:
@@ -71,58 +71,27 @@ Resources:
               StringEquals:
                 sts:ExternalId: !Ref 'ExternalID'
       Policies:
-        - PolicyName: Redlock-IAM-ReadOnly-Policy
+        - PolicyName: Prisma-IAM-ReadOnly-Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
               - Action:
-                  - acm:List*
                   - apigateway:GET
-                  - appstream:Describe*
-                  - cloudtrail:GetEventSelectors
-                  - cloudtrail:LookupEvents
-                  - cloudsearch:Describe*
                   - cognito-identity:ListTagsForResource
                   - cognito-idp:ListTagsForResource
-                  - dynamodb:DescribeTable
-                  - ds:Describe*
-                  - elasticache:List*
-                  - eks:List*
-                  - eks:Describe*
                   - elasticbeanstalk:ListTagsForResource
-                  - elasticfilesystem:Describe*
-                  - elasticmapreduce:Describe*
-                  - elasticmapreduce:List*
-                  - inspector:Describe*
-                  - inspector:List*
-                  - glacier:List*
-                  - glacier:GetVaultAccessPolicy
-                  - glacier:GetVaultNotifications
-                  - glacier:GetVaultLock
-                  - glacier:GetDataRetrievalPolicy
-                  - guardduty:List*
-                  - guardduty:Get*
-                  - iam:SimulatePrincipalPolicy
-                  - iam:SimulateCustomPolicy
-                  - kinesis:Describe*
-                  - kinesis:List*
-                  - rds:ListTagsForResource
-                  - sns:List*
-                  - sns:Get*
+                  - elasticfilesystem:DescribeTags
+                  - glacier:ListTagsForVault
+                  - secretsmanager:DescribeSecret
                   - ssm:GetParameters
                   - ssm:ListTagsForResource
                   - sqs:SendMessage
-                  - logs:FilterLogEvents
-                  - logs:Get*
-                  - logs:Describe*
-                  - secretsmanager:List*
-                  - secretsmanager:Describe*
-                  - lambda:List*
-                  - s3:GetAccountPublicAccessBlock
-                  - s3:GetBucketPublicAccessBlock
+                  - logs:GetLogEvents
+                  - elasticmapreduce:ListSecurityConfigurations
+                  - sns:listSubscriptions
                 Effect: Allow
                 Resource: '*'
-      RoleName: !Ref 'RedlockRoleName'
+      RoleName: !Ref 'PrismaRoleName'
   LambdaOnboardRole: 
     Type: AWS::IAM::Role
     Properties:
@@ -134,7 +103,7 @@ Resources:
               Service: lambda.amazonaws.com
             Action: sts:AssumeRole
       Policies:
-        - PolicyName: Redlock-IAM-ReadOnly-Policy
+        - PolicyName: Prisma-IAM-ReadOnly-Policy
           PolicyDocument:
             Version: '2012-10-17'
             Statement:
@@ -163,11 +132,11 @@ Resources:
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
-      FunctionName: "LambdaOnboardRedlock"
-      Description: Onboarding Script for Redlock
+      FunctionName: "LambdaOnboardPrisma"
+      Description: Onboarding Script for Prisma 
       Runtime: python2.7
       Code:
-        S3Bucket: "onboardredlock"
+        S3Bucket: "onboardprisma"
         S3Key: onboard.zip
       Handler: onboard_rl.main
       MemorySize: 128
@@ -178,26 +147,26 @@ Resources:
           - Arn
       Environment:
         Variables:
-          REDLOCK_USER_NAME:
-            !Ref RedlockUsername 
-          REDLOCK_PASSWORD: 
-            !Ref RedlockPassword
-          REDLOCK_CUSTOMER_NAME:
-            !Ref RedlockCustomerName
-          REDLOCK_ACCOUNT_NAME:
-            !Ref RedlockAccountName
-          REDLOCK_TENANT:
-            !Ref RedlockTenant
-          REDLOCK_VPC:
+          PRISMA_USER_NAME:
+            !Ref PrismaUsername 
+          PRISMA_PASSWORD: 
+            !Ref PrismaPassword
+          PRISMA_CUSTOMER_NAME:
+            !Ref PrismaCustomerName
+          PRISMA_ACCOUNT_NAME:
+            !Ref PrismaAccountName
+          PRISMA_TENANT:
+            !Ref PrismaTenant
+          PRISMA_VPC:
             !If [ShouldCreateCloudTrail, true, false]
-          REDLOCK_CLOUDTRAIL:
+          PRISMA_CLOUDTRAIL:
             !If [ShouldCreateVpcFlowLogs, true, false]
           EXTERNAL_ID:
             !Ref ExternalID
           ROLE_NAME:
-            !Ref RedlockRoleName
+            !Ref PrismaRoleName
   OnboardScript:
-    Type: Custom::OnboardRedlockScript
+    Type: Custom::OnboardPrismaScript
     Properties:
       ServiceToken: !GetAtt LambdaFunction.Arn
     DependsOn: LambdaFunction
@@ -207,23 +176,23 @@ Metadata:
     ParameterGroups:
       -
         Label:
-          default: "Redlock Account Information"
+          default: "Prisma Account Information"
         Parameters:
-          - RedlockUsername
-          - RedlockPassword
-          - RedlockCustomerName
-          - RedlockAccountName
-          - RedlockTenant       
+          - PrismaUsername
+          - PrismaPassword
+          - PrismaCustomerName
+          - PrismaAccountName
+          - PrismaTenant       
       - 
         Label:
           default: "AWS Configuration"
         Parameters:
-          - RedlockRoleName
+          - PrismaRoleName
           - ExternalID
           - EnableCloudTrailLogs
           - EnableVpcFlowLogs
  
 Outputs:
-  RedlockRoleName:
-    Value: !Ref 'RedlockRoleName'
-    Description: Redlock IAM role name
+  PrismaRoleName:
+    Value: !Ref 'PrismaRoleName'
+    Description: Prisma IAM role name

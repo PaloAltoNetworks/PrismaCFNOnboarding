@@ -30,9 +30,9 @@ ctClient    = boto3.client   ( 'cloudtrail')
 account_id = boto3.client('sts').get_caller_identity().get('Account')
 
 globalVars = {}
-globalVars['tagName']               = "Redlock-flowlogs"
-globalVars['Log-GroupName']         = "Redlock-flowlogs"
-globalVars['IAM-RoleName']          = "Redlock-VPC-flowlogs-role"
+globalVars['tagName']               = "Prisma-flowlogs"
+globalVars['Log-GroupName']         = "Prisma-flowlogs"
+globalVars['IAM-RoleName']          = "Prisma-VPC-flowlogs-role"
 globalVars['regions']               = [region['RegionName'] for region in ec2Client.describe_regions()['Regions']]
 globalVars['username']              = os.environ["REDLOCK_USER_NAME"]
 globalVars['password']              = os.environ["REDLOCK_PASSWORD"]
@@ -142,7 +142,7 @@ def create_account_information(account_name):
     return account_information
 
 def get_auth_token(globalVars):
-    url = "https://%s.redlock.io/login" % (tenant)
+    url = "https://%s.prismacloud.io/login" % (tenant)
     headers = {'Content-Type': 'application/json'}
     payload = json.dumps(globalVars)
     response = requests.request("POST", url, headers=headers, data=payload)
@@ -150,7 +150,7 @@ def get_auth_token(globalVars):
     return token
 
 def call_redlock_api(auth_token, action, endpoint, payload, globalVars):
-    url = "https://%s.redlock.io/" % tenant + endpoint
+    url = "https://%s.prismacloud.io/" % tenant + endpoint
     headers = {'Content-Type': 'application/json', 'x-redlock-auth': auth_token}
     payload = json.dumps(payload)
     response = requests.request(action, url, headers=headers, data=payload)
@@ -166,9 +166,9 @@ def register_account_with_redlock(globalVars, account_information):
         "name": account_information['name'],
         "roleArn": account_information['arn']
     }
-    logging.info("Adding account to Redlock")
+    logging.info("Adding account to Prisma")
     response = call_redlock_api(token, 'POST', 'cloud/aws', payload, globalVars)
-    logging.info("Account: " + account_information['name'] + " has been on-boarded to Redlock.")
+    logging.info("Account: " + account_information['name'] + " has been on-boarded to Prisma.")
     return response
 
 def create_trail():
@@ -184,7 +184,7 @@ def create_trail():
     )
     print("creating CloudTrail")
     response = ctClient.create_trail(
-      Name="RedlockTrail",
+      Name="PrismaTrail",
       S3BucketName="redlocktrails3",
       IsOrganizationTrail=False,
       IsMultiRegionTrail=True,
