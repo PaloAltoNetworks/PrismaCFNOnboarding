@@ -38,7 +38,7 @@ globalVars['username']              = os.environ["PRISMA_USER_NAME"]
 globalVars['password']              = os.environ["PRISMA_PASSWORD"]
 globalVars['customerName']          = os.environ["PRISMA_CUSTOMER_NAME"]
 globalVars['accountname']           = os.environ["PRISMA_ACCOUNT_NAME"]
-globalvars['accountgroup']           = os.environ["PRISMA_ACCOUNT_GROUP_ID"]
+globalVars['accountgroup']           = os.environ["PRISMA_ACCOUNT_GROUP_ID"]
 
 if os.environ["PRISMA_TENANT"]=="app":
   tenant="api"
@@ -164,10 +164,9 @@ def register_account_with_redlock(globalVars, account_information):
         "accountId": account_information['account_id'],
         "enabled": True,
         "externalId": account_information['external_id'],
-        "groupIds": [],
+        "groupIds": account_information['accountgroup'],
         "name": account_information['name'],
-        "roleArn": account_information['arn'],
-        "groupIds": account_information['accountgroup']
+        "roleArn": account_information['arn']
     }
     logging.info("Adding account to Prisma")
     response = call_redlock_api(token, 'POST', 'cloud/aws', payload, globalVars)
