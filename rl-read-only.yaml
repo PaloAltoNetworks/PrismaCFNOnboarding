@@ -32,6 +32,11 @@ Parameters:
     Description: 'Provide a unique name for the AWS account within Prisma.io'
     MinLength: '1'
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
+  PrismaAccountGroupId:
+    Type: String
+    Description: 'Provide Account Group Id'
+    MinLength: '1'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
   PrismaTenant:
     Type: String
     Description: 'Specify the Prisma.io tenant your account is provisioned on'
@@ -165,6 +170,8 @@ Resources:
             !Ref ExternalID
           ROLE_NAME:
             !Ref PrismaRoleName
+          PRISMA_ACCOUNT_GROUP_ID:
+            !Ref PrismaAccountGroupId
   OnboardScript:
     Type: Custom::OnboardPrismaScript
     Properties:

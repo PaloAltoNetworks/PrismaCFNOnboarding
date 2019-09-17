@@ -34,23 +34,24 @@ globalVars['tagName']               = "Prisma-flowlogs"
 globalVars['Log-GroupName']         = "Prisma-flowlogs"
 globalVars['IAM-RoleName']          = "Prisma-VPC-flowlogs-role"
 globalVars['regions']               = [region['RegionName'] for region in ec2Client.describe_regions()['Regions']]
-globalVars['username']              = os.environ["REDLOCK_USER_NAME"]
-globalVars['password']              = os.environ["REDLOCK_PASSWORD"]
-globalVars['customerName']          = os.environ["REDLOCK_CUSTOMER_NAME"]
-globalVars['accountname']           = os.environ["REDLOCK_ACCOUNT_NAME"]
+globalVars['username']              = os.environ["PRISMA_USER_NAME"]
+globalVars['password']              = os.environ["PRISMA_PASSWORD"]
+globalVars['customerName']          = os.environ["PRISMA_CUSTOMER_NAME"]
+globalVars['accountname']           = os.environ["PRISMA_ACCOUNT_NAME"]
+globalvars['accountgroup']           = os.environ["PRISMA_ACCOUNT_GROUP_ID"]
 
-if os.environ["REDLOCK_TENANT"]=="app":
+if os.environ["PRISMA_TENANT"]=="app":
   tenant="api"
-elif os.environ["REDLOCK_TENANT"]=="app2":
+elif os.environ["PRISMA_TENANT"]=="app2":
   tenant="api2"
-elif os.environ["REDLOCK_TENANT"]=="app3":
+elif os.environ["PRISMA_TENANT"]=="app3":
   tenant="api3"
-elif os.environ["REDLOCK_TENANT"]=="app.eu":
+elif os.environ["PRISMA_TENANT"]=="app.eu":
   tenant="api.eu"
-elif os.environ["REDLOCK_TENANT"]=="app.anz":
+elif os.environ["PRISMA_TENANT"]=="app.anz":
   tenant="api.anz"
-enablevpc = os.environ["REDLOCK_VPC"]
-enablecloudtrail = os.environ["REDLOCK_CLOUDTRAIL"]
+enablevpc = os.environ["PRISMA_VPC"]
+enablecloudtrail = os.environ["PRISMA_CLOUDTRAIL"]
 ExternalID = os.environ["EXTERNAL_ID"]
 rolename = os.environ["ROLE_NAME"]
 ### Create IAM Role
@@ -137,7 +138,8 @@ def create_account_information(account_name):
         'name': account_name,
         'external_id': external_id,
         'account_id': account_id,
-        'arn': arn
+        'arn': arn,
+        'accountgroup': accountgroup
     }
     return account_information
 
@@ -164,7 +166,8 @@ def register_account_with_redlock(globalVars, account_information):
         "externalId": account_information['external_id'],
         "groupIds": [],
         "name": account_information['name'],
-        "roleArn": account_information['arn']
+        "roleArn": account_information['arn'],
+        "groupIds": account_information['accountgroup']
     }
     logging.info("Adding account to Prisma")
     response = call_redlock_api(token, 'POST', 'cloud/aws', payload, globalVars)
