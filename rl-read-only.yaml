@@ -31,17 +31,22 @@ Parameters:
     Type: String
     Description: 'Provide a unique name for the AWS account within Prisma.io'
     MinLength: '1'
-    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
-  PrismaAccountGroupId:
-    Type: String
-    Description: 'Provide Account Group Id'
-    MinLength: '1'
-    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@''\:\/\-_\s]*'
   PrismaTenant:
     Type: String
     Description: 'Specify the Prisma.io tenant your account is provisioned on'
     MinLength: '1'
     AllowedValues: ["app", "app2", "app3", "app.eu", "app.anz"]
+  PrismaAccountGroup:
+    Type: String
+    Description: 'Specify the Prisma account group id to add cloud account to'
+    MinLength: '5'
+    AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
+  CreatePrismaAccount:
+    Type: String
+    Description: 'Set to true to create Prisma account, set to false to just update AWS settings (including role)'
+    Default: 'false'
+    AllowedValues: ["true", "false"]
   EnableCloudTrailLogs:
     Type: String
     Description: 'Check for multi-region trail and create a new one if one does not exist'
@@ -87,6 +92,7 @@ Resources:
                   - elasticbeanstalk:ListTagsForResource
                   - elasticfilesystem:DescribeTags
                   - glacier:ListTagsForVault
+                  - glacer:GetVaultLock
                   - secretsmanager:DescribeSecret
                   - ssm:GetParameters
                   - ssm:ListTagsForResource
@@ -97,7 +103,7 @@ Resources:
                 Effect: Allow
                 Resource: '*'
       RoleName: !Ref 'PrismaRoleName'
-  LambdaOnboardRole: 
+  LambdaOnboardRole:
     Type: AWS::IAM::Role
     Properties:
       AssumeRolePolicyDocument:
@@ -129,6 +135,7 @@ Resources:
                   - iam:CreatePolicy
                   - iam:CreateRole
                   - iam:AttachPolicy
+                  - iam:AttachRolePolicy
                   - logs:CreateLogGroup
                   - logs:CreateLogStream
                   - logs:PutLogEvents
@@ -138,10 +145,10 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: "LambdaOnboardPrisma"
-      Description: Onboarding Script for Prisma 
-      Runtime: python2.7
+      Description: Onboarding Script for Prisma
+      Runtime: python3.7
       Code:
-        S3Bucket: "onboardredlock"
+        S3Bucket: "onboardprisma"
         S3Key: onboard.zip
       Handler: onboard_rl.main
       MemorySize: 128
@@ -153,8 +160,8 @@ Resources:
       Environment:
         Variables:
           PRISMA_USER_NAME:
-            !Ref PrismaUsername 
-          PRISMA_PASSWORD: 
+            !Ref PrismaUsername
+          PRISMA_PASSWORD:
             !Ref PrismaPassword
           PRISMA_CUSTOMER_NAME:
             !Ref PrismaCustomerName
@@ -162,6 +169,10 @@ Resources:
             !Ref PrismaAccountName
           PRISMA_TENANT:
             !Ref PrismaTenant
+          PRISMA_ACCOUNT_GROUP:
+            !Ref PrismaAccountGroup
+          PRISMA_ACCOUNT:
+            !Ref CreatePrismaAccount
           PRISMA_VPC:
             !If [ShouldCreateCloudTrail, true, false]
           PRISMA_CLOUDTRAIL:
@@ -170,8 +181,6 @@ Resources:
             !Ref ExternalID
           ROLE_NAME:
             !Ref PrismaRoleName
-          PRISMA_ACCOUNT_GROUP_ID:
-            !Ref PrismaAccountGroupId
   OnboardScript:
     Type: Custom::OnboardPrismaScript
     Properties:
@@ -189,8 +198,10 @@ Metadata:
           - PrismaPassword
           - PrismaCustomerName
           - PrismaAccountName
-          - PrismaTenant       
-      - 
+          - PrismaTenant
+          - PrismaAccountGroup
+          - CreatePrismaAccount
+      -
         Label:
           default: "AWS Configuration"
         Parameters:
@@ -198,7 +209,7 @@ Metadata:
           - ExternalID
           - EnableCloudTrailLogs
           - EnableVpcFlowLogs
- 
+
 Outputs:
   PrismaRoleName:
     Value: !Ref 'PrismaRoleName'

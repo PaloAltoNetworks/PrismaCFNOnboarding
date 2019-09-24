@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 import boto3
 import os
 import uuid
@@ -11,7 +10,7 @@ from botocore.vendored import requests
 import json
 import logging
 import signal
-from urllib2 import build_opener, HTTPHandler, Request
+from urllib.request import build_opener, HTTPHandler, Request
 
 LOGGER = logging.getLogger()
 LOGGER.setLevel(logging.INFO)
@@ -38,7 +37,8 @@ globalVars['username']              = os.environ["PRISMA_USER_NAME"]
 globalVars['password']              = os.environ["PRISMA_PASSWORD"]
 globalVars['customerName']          = os.environ["PRISMA_CUSTOMER_NAME"]
 globalVars['accountname']           = os.environ["PRISMA_ACCOUNT_NAME"]
-globalVars['accountgroup']           = os.environ["PRISMA_ACCOUNT_GROUP_ID"]
+globalVars['accountgroupid']        = os.environ["PRISMA_ACCOUNT_GROUP"]
+globalVars['createacct']            = os.environ["PRISMA_ACCOUNT"]
 
 if os.environ["PRISMA_TENANT"]=="app":
   tenant="api"
@@ -96,39 +96,44 @@ S3BucketPolicy ="""{
             "Effect": "Allow",
             "Principal": {"Service": "cloudtrail.amazonaws.com"},
             "Action": "s3:GetBucketAcl",
-            "Resource": "arn:aws:s3:::redlocktrails3"
+            "Resource": "arn:aws:s3:::redlocktrails3-%s"
         },
         {
             "Sid": "AWSCloudTrailWrite20150319",
             "Effect": "Allow",
             "Principal": {"Service": "cloudtrail.amazonaws.com"},
             "Action": "s3:PutObject",
-            "Resource": "arn:aws:s3:::redlocktrails3/AWSLogs/%s/*",
+            "Resource": "arn:aws:s3:::redlocktrails3-%s/AWSLogs/%s/*",
             "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
         }
     ]
-}""" % (account_id)
+}""" % (account_id, account_id, account_id)
 
 
 def start(globalVars):
     logging.basicConfig(
-        #filename='onboarding.log', 
+        #filename='onboarding.log',
         format='%(asctime)s %(message)s',
         level=logging.INFO
     )
     account_information = create_account_information(globalVars['accountname'])
+    LOGGER.info(account_information)
     response = register_account_with_redlock(globalVars, account_information)
     if enablevpc =="true":
       setupvpc(globalVars)
-    if enablecloudtrail == "true":
-      is_cloudtrail_enabled()
+'''    if enablecloudtrail == "true":
+      #is_cloudtrail_enabled()
+'''
     return
 
 def setupvpc(globalVars):
   create_iam()
+  print((globalVars['regions']))
   for region in globalVars['regions']:
+    print("Processing region ", region)
     createCloudwatchLog(region)
     vpcs = get_vpc_list(region)
+    print("VPCS for region named", region, vpcs)
 
 def create_account_information(account_name):
     external_id = ExternalID
@@ -138,15 +143,19 @@ def create_account_information(account_name):
         'name': account_name,
         'external_id': external_id,
         'account_id': account_id,
-        'arn': arn,
-        'accountgroup': accountgroup
+        'arn': arn
     }
     return account_information
 
 def get_auth_token(globalVars):
     url = "https://%s.prismacloud.io/login" % (tenant)
     headers = {'Content-Type': 'application/json'}
-    payload = json.dumps(globalVars)
+    payload = {
+        "username": globalVars['username'],
+        "password": globalVars['password'],
+        "customerName": globalVars['customerName']
+    }
+    payload = json.dumps(payload)
     response = requests.request("POST", url, headers=headers, data=payload)
     token = response.json()['token']
     return token
@@ -155,53 +164,83 @@ def call_redlock_api(auth_token, action, endpoint, payload, globalVars):
     url = "https://%s.prismacloud.io/" % tenant + endpoint
     headers = {'Content-Type': 'application/json', 'x-redlock-auth': auth_token}
     payload = json.dumps(payload)
+    LOGGER.info(payload)
     response = requests.request(action, url, headers=headers, data=payload)
     return response
 
 def register_account_with_redlock(globalVars, account_information):
     token = get_auth_token(globalVars)
+    LOGGER.info('In register_account_with_redlock')
+    LOGGER.info(token)
     payload = {
         "accountId": account_information['account_id'],
         "enabled": True,
         "externalId": account_information['external_id'],
-        "groupIds": account_information['accountgroup'],
+        "groupIds": [ globalVars['accountgroupid']],
         "name": account_information['name'],
         "roleArn": account_information['arn']
     }
-    logging.info("Adding account to Prisma")
-    response = call_redlock_api(token, 'POST', 'cloud/aws', payload, globalVars)
-    logging.info("Account: " + account_information['name'] + " has been on-boarded to Prisma.")
+    if globalVars['createacct'] == "true":
+       logging.info("Adding account to Prisma")
+       response = call_redlock_api(token, 'POST', 'cloud/aws', payload, globalVars)
+       logging.info("Account: " + account_information['name'] + " has been on-boarded to Prisma.")
+       LOGGER.info(response)
+    else:
+       logging.info("Updating account in Prisma")
+       endpoint = 'cloud/aws/' + account_information['account_id']
+       response = call_redlock_api(token,'PUT', endpoint, payload, globalVars)
     return response
 
 def create_trail():
     print("creating S3Bucket for CloudTrail")
-    s3Client    = boto3.client   ( 's3')
-    response = s3Client.create_bucket(
-      ACL="private",
-      Bucket="redlocktrails3"
-    )
+    s3Client    = session.client   ( 's3')
+    try:
+      if session.region_name == 'us-east-1':
+        response = s3Client.create_bucket(
+          ACL="private",
+          Bucket=("redlocktrails-%s" % account_id)
+        )
+      else:
+        response = s3Client.create_bucket(
+          ACL="private",
+          Bucket=("redlocktrails-%s" % account_id),
+          CreateBucketConfiguration={'LocationConstraint': session.region_name}
+        )
+
+    except ClientError as e:
+      if e.response['Error']['Code'] == 'BucketAlreadyExists' or e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou' :
+        print('Bucket Already Exists... Continuing')
+      else:
+        print((e.response))
+
     response = s3Client.put_bucket_policy(
-      Bucket="redlocktrails3",
-      Policy=S3BucketPolicy
+      Bucket=("redlocktrails-%s" % account_id),
+      Policy=S3BucketPolicy,
     )
+
     print("creating CloudTrail")
-    response = ctClient.create_trail(
-      Name="PrismaTrail",
-      S3BucketName="redlocktrails3",
-      IsOrganizationTrail=False,
-      IsMultiRegionTrail=True,
-      IncludeGlobalServiceEvents=True
-      )
+    try:
+      response = ctClient.create_trail(
+        Name="RedlockTrail",
+        S3BucketName=("redlocktrails-%s" % account_id),
+        IsOrganizationTrail=False,
+        IsMultiRegionTrail=True,
+        IncludeGlobalServiceEvents=True
+        )
+    except ClientError as e:
+      if e.response['Error']['Code'] == 'TrailAlreadyExistsException':
+        print('Trail Already Exists... Continuing')
+      else:
+        print((e.response))
 
 
 
-
-def is_cloudtrail_enabled():
+def is_cloudtrail_enabledd():
   ctenabled=False
   response = ctClient.describe_trails()
   if len(response['trailList']) != 0:
     for each in response['trailList']:
-      if each[u'IsMultiRegionTrail']==True:
+      if each['IsMultiRegionTrail']==True:
         multitrails.update({each['Name']: each['HomeRegion']})
     for each in multitrails:
         regionclient  = boto3.client   ( 'cloudtrail', region_name=multitrails[each])
@@ -220,7 +259,7 @@ def is_cloudtrail_enabled():
 
 def create_iam():
   try:
-    global iamRole 
+    global iamRole
     iamRole = iamClient.create_role( RoleName = globalVars['IAM-RoleName'] ,
                                      AssumeRolePolicyDocument = flowLogsTrustPolicy
                                     )
@@ -229,11 +268,16 @@ def create_iam():
   except ClientError as e:
     if e.response['Error']['Code'] == 'EntityAlreadyExists':
       print('Role Already Exists...')
+      iamRole = {
+          'Role': {
+              'Arn': 'arn:aws:iam::%s:role/%s' % (account_id, globalVars['IAM-RoleName'])
+          }
+      }
 
 
   #### Attach permissions to the role
   try:
-    global flowLogsPermPolicy 
+    global flowLogsPermPolicy
     flowLogsPermPolicy = iamClient.create_policy( PolicyName    = "flowLogsPermissions",
                                                   PolicyDocument= flowLogsPermissions,
                                                   Description   = 'Provides permissions to publish flow logs to the specified log group in CloudWatch Logs'
@@ -243,11 +287,19 @@ def create_iam():
   except ClientError as e:
     if e.response['Error']['Code'] == 'EntityAlreadyExists':
       print('Policy Already Exists...Continuing')
+      flowLogsPermPolicy = {
+          'Policy': {
+              'Arn': 'arn:aws:iam::%s:policy/flowLogsPermissions' % account_id
+          }
+      }
+      print(flowLogsPermPolicy)
 
 
 
 
   try:
+    sleep(1)
+    print((globalVars['IAM-RoleName']))
     response = iamClient.attach_role_policy( RoleName = globalVars['IAM-RoleName'] ,
                                              PolicyArn= flowLogsPermPolicy['Policy']['Arn']
                                             )
@@ -256,6 +308,7 @@ def create_iam():
 
   except ClientError as e:
     print('Unexpected error')
+    print(e)
 
   sleep(10)
 
@@ -266,23 +319,24 @@ def createCloudwatchLog(region):
     logGroup = logsClient.create_log_group( logGroupName = globalVars['Log-GroupName'],
                                           tags = {'Key': globalVars['tagName'] , 'Value':'Flow-Logs'}
                                           )
-    print('Created CloudWatchLog in %s' % region)
+    print(('Created CloudWatchLog in %s' % region))
 
   except logsClient.exceptions.ResourceAlreadyExistsException as e:
+   print("LogGroup already exists for ", region)
    pass
 
 def createflowlog(region,vpc):
+  ec2Client   = boto3.client   ( 'ec2', region_name = region )
   try:
-    ec2Client   = boto3.client   ( 'ec2', region_name = region )
     nwFlowLogs = ec2Client.create_flow_logs( ResourceIds              = [vpc, ],
                                            ResourceType             = 'VPC',
                                            TrafficType              = 'ALL',
                                            LogGroupName             = globalVars['Log-GroupName'],
                                            DeliverLogsPermissionArn = iamRole['Role']['Arn']
                                           )
-    print('Created FlowLog in %s' % region)
+    print(('Created FlowLog in %s' % region))
   except ClientError as e:
-    raise(e)
+    print(e)
 
 
 
@@ -303,10 +357,10 @@ def is_flow_logs_enabled(region,vpc):
             },
         ],
     )
-    if len(response[u'FlowLogs']) != 0 and response[u'FlowLogs'][0][u'LogDestinationType']==u'cloud-watch-logs': return True
-    print('Previous Flowlog detected %s' % vpc_id)
+    if len(response['FlowLogs']) != 0 and response['FlowLogs'][0]['LogDestinationType']=='cloud-watch-logs': return True
   except ClientError as e:
     raise(e)
+    print(e)
 
 
 
@@ -315,15 +369,18 @@ def get_vpc_list(region):
   vpcs = []
   ec2 = boto3.resource('ec2', region_name=region)
   vpcarray = list(ec2.vpcs.filter())
+  print('VPC Array')
+  print(vpcarray)
   if not vpcarray:
-    pass 
+    pass
   else:
     for each in vpcarray:
+      print(each.vpc_id)
       if is_flow_logs_enabled(region,each.vpc_id):
-        print("Flowlog exists for %s" % each.vpc_id)
+        print(("Flowlog exists for %s" % each.vpc_id))
       else:
+        print("No flowlog found for", each.vpc_id, "creating")
         createflowlog(region,each.vpc_id)
-        print("Created %s" % each.vpc_id)
 
 def send_response(event, context, response_status, response_data):
     '''Send a resource manipulation status response to CloudFormation'''
@@ -341,7 +398,7 @@ def send_response(event, context, response_status, response_data):
     LOGGER.info('ResponseBody: %s', response_body)
 
     opener = build_opener(HTTPHandler)
-    request = Request(event['ResponseURL'], data=response_body)
+    request = Request(event['ResponseURL'], data=response_body.encode("utf-8"))
     request.add_header('Content-Type', '')
     request.add_header('Content-Length', len(response_body))
     request.get_method = lambda: 'PUT'
@@ -353,7 +410,7 @@ def send_response(event, context, response_status, response_data):
 def timeout_handler(_signal, _frame):
     '''Handle SIGALRM'''
     raise Exception('Time exceeded')
-    
+
 
 def main(event, context):
   try:
