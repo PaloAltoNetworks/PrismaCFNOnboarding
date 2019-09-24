@@ -121,9 +121,6 @@ def start(globalVars):
     response = register_account_with_redlock(globalVars, account_information)
     if enablevpc =="true":
       setupvpc(globalVars)
-'''    if enablecloudtrail == "true":
-      #is_cloudtrail_enabled()
-'''
     return
 
 def setupvpc(globalVars):
