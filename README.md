@@ -4,6 +4,7 @@ Cloudformation template to onboard Redlock to AWS.
 
 Includes Python Lambda script to create VPC Flow logs and Cloudtrail
 
+```
 CFT PARAMETERS BELOW
 
 PrismaRoleName       (Name you would like the role to be called within your AWS Account)
@@ -27,6 +28,6 @@ CreatePrismaAccount  (True or False, True will onboard an account as new, False 
 EnableCloudTrailLogs (True or False, currently does nothing. Prisma does not require creation of a CT any longer as we pull from the CT API and this is enabled by default for all AWS accounts. There is currently a known issue within the product that will provide a Yellow warning stating that we can't find a CT for the account but this can be ignored. Event ingestion will work without it.)
 
 EnableVpcFlowLogs    (True or False, True will iterate through all of your VPCs and enable flowlogs if there isn't one already available)
-
+```
 
 
