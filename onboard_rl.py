@@ -37,8 +37,9 @@ globalVars['username']              = os.environ["PRISMA_USER_NAME"]
 globalVars['password']              = os.environ["PRISMA_PASSWORD"]
 globalVars['customerName']          = os.environ["PRISMA_CUSTOMER_NAME"]
 globalVars['accountname']           = os.environ["PRISMA_ACCOUNT_NAME"]
-globalVars['accountgroupid']        = os.environ["PRISMA_ACCOUNT_GROUP"]
+globalVars['accountgroup']        = os.environ["PRISMA_ACCOUNT_GROUP"]
 globalVars['createacct']            = os.environ["PRISMA_ACCOUNT"]
+globalVars['accountgroupid']	    = None
 
 if os.environ["PRISMA_TENANT"]=="app":
   tenant="api"
@@ -118,6 +119,8 @@ def start(globalVars):
     )
     account_information = create_account_information(globalVars['accountname'])
     LOGGER.info(account_information)
+    print("Starting lookup")
+    response = lookup_accountgroup_id(globalVars, account_information)
     response = register_account_with_redlock(globalVars, account_information)
     if enablevpc =="true":
       setupvpc(globalVars)
@@ -187,6 +190,19 @@ def register_account_with_redlock(globalVars, account_information):
        endpoint = 'cloud/aws/' + account_information['account_id']
        response = call_redlock_api(token,'PUT', endpoint, payload, globalVars)
     return response
+
+def lookup_accountgroup_id(globalVars, account_information):
+    token = get_auth_token(globalVars)
+    print(token)
+    LOGGER.info('Looking up account group id')
+    payload = {}
+    endpoint = 'cloud/group/name'
+    accountgroups = call_redlock_api(token, 'GET', endpoint, payload, globalVars)
+    print(accountgroups)
+    for each in accountgroups.json():
+      if each['name']==globalVars['accountgroup']:
+        globalVars['accountgroupid'] = each['id']
+        return globalVars['accountgroupid']
 
 def create_trail():
     print("creating S3Bucket for CloudTrail")
@@ -434,3 +450,4 @@ def main(event, context):
       LOGGER.info('FAILED!')
       send_response(event, context, "FAILED", {
           "Message": "Exception during processing"})
+

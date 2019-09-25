@@ -39,7 +39,7 @@ Parameters:
     AllowedValues: ["app", "app2", "app3", "app.eu", "app.anz"]
   PrismaAccountGroup:
     Type: String
-    Description: 'Specify the Prisma account group id to add cloud account to'
+    Description: 'Specify the Prisma account group name'
     MinLength: '5'
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
   CreatePrismaAccount:
@@ -92,7 +92,7 @@ Resources:
                   - elasticbeanstalk:ListTagsForResource
                   - elasticfilesystem:DescribeTags
                   - glacier:ListTagsForVault
-                  - glacer:GetVaultLock
+                  - glacier:GetVaultLock
                   - secretsmanager:DescribeSecret
                   - ssm:GetParameters
                   - ssm:ListTagsForResource
