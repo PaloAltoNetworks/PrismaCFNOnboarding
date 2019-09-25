@@ -5,7 +5,7 @@ Cloudformation template to onboard Redlock to AWS.
 Includes Python Lambda script to create VPC Flow logs and Cloudtrail
 
 ```
-CFT PARAMETERS BELOW
+CFT PARAMETERS 
 
 PrismaRoleName       (Name you would like the role to be called within your AWS Account)
 
