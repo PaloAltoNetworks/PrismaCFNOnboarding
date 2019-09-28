@@ -155,7 +155,7 @@ Resources:
                 Resource: !Join 
                   - ''
                   - - 'arn:aws:s3:::prismatrail-'
-                    - !Ref 'AWS::AcountId'
+                    - !Ref 'AWS::AccountId'
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
