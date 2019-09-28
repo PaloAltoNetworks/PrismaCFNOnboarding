@@ -27,6 +27,8 @@ iamClient   = boto3.client   ( 'iam')
 ec2Client   = boto3.client   ( 'ec2')
 ctClient    = boto3.client   ( 'cloudtrail')
 account_id = boto3.client('sts').get_caller_identity().get('Account')
+s3 = boto3.resource('s3')
+
 
 globalVars = {}
 globalVars['tagName']               = "Prisma-flowlogs"
@@ -95,17 +97,25 @@ S3BucketPolicy ="""{
         {
             "Sid": "AWSCloudTrailAclCheck20150319",
             "Effect": "Allow",
-            "Principal": {"Service": "cloudtrail.amazonaws.com"},
+            "Principal": {
+                "Service": "cloudtrail.amazonaws.com"
+            },
             "Action": "s3:GetBucketAcl",
-            "Resource": "arn:aws:s3:::redlocktrails3-%s"
+            "Resource": "arn:aws:s3:::prismatrail-%s"
         },
         {
             "Sid": "AWSCloudTrailWrite20150319",
             "Effect": "Allow",
-            "Principal": {"Service": "cloudtrail.amazonaws.com"},
+            "Principal": {
+                "Service": "cloudtrail.amazonaws.com"
+            },
             "Action": "s3:PutObject",
-            "Resource": "arn:aws:s3:::redlocktrails3-%s/AWSLogs/%s/*",
-            "Condition": {"StringEquals": {"s3:x-amz-acl": "bucket-owner-full-control"}}
+            "Resource": "arn:aws:s3:::prismatrail-%s/AWSLogs/%s/*",
+            "Condition": {
+                "StringEquals": {
+                    "s3:x-amz-acl": "bucket-owner-full-control"
+                }
+            }
         }
     ]
 }""" % (account_id, account_id, account_id)
@@ -124,6 +134,8 @@ def start(globalVars):
     response = register_account_with_redlock(globalVars, account_information)
     if enablevpc =="true":
       setupvpc(globalVars)
+    if enablecloudtrail == "true":
+      is_cloudtrail_enabled()
     return
 
 def setupvpc(globalVars):
@@ -206,36 +218,27 @@ def lookup_accountgroup_id(globalVars, account_information):
 
 def create_trail():
     print("creating S3Bucket for CloudTrail")
-    s3Client    = session.client   ( 's3')
-    try:
-      if session.region_name == 'us-east-1':
-        response = s3Client.create_bucket(
-          ACL="private",
-          Bucket=("redlocktrails-%s" % account_id)
-        )
-      else:
-        response = s3Client.create_bucket(
-          ACL="private",
-          Bucket=("redlocktrails-%s" % account_id),
-          CreateBucketConfiguration={'LocationConstraint': session.region_name}
-        )
-
-    except ClientError as e:
-      if e.response['Error']['Code'] == 'BucketAlreadyExists' or e.response['Error']['Code'] == 'BucketAlreadyOwnedByYou' :
-        print('Bucket Already Exists... Continuing')
-      else:
-        print((e.response))
-
-    response = s3Client.put_bucket_policy(
-      Bucket=("redlocktrails-%s" % account_id),
-      Policy=S3BucketPolicy,
-    )
+    bucket = "prismatrail-%s" % account_id
+    mybucket = s3.Bucket(bucket)
+    if mybucket.creation_date:
+      print("Bucket exists")
+    else:
+      print("Bucket Doesn't exist")
+      s3_client = boto3.client('s3', region_name = 'us-east-1')
+      s3_client.create_bucket(Bucket=bucket,)
+      try:
+        s3_client = boto3.client('s3', region_name = 'us-east-1')
+        s3_client.put_bucket_policy(
+          Bucket=(bucket),
+          Policy=S3BucketPolicy)
+      except:
+        print(e)
 
     print("creating CloudTrail")
     try:
       response = ctClient.create_trail(
-        Name="RedlockTrail",
-        S3BucketName=("redlocktrails-%s" % account_id),
+        Name="PrismaTrail",
+        S3BucketName=("prismatrail-%s" % account_id),
         IsOrganizationTrail=False,
         IsMultiRegionTrail=True,
         IncludeGlobalServiceEvents=True
@@ -248,13 +251,14 @@ def create_trail():
 
 
 
-def is_cloudtrail_enabledd():
+def is_cloudtrail_enabled():
   ctenabled=False
   response = ctClient.describe_trails()
   if len(response['trailList']) != 0:
     for each in response['trailList']:
       if each['IsMultiRegionTrail']==True:
         multitrails.update({each['Name']: each['HomeRegion']})
+    print("Multitrails", multitrails)
     for each in multitrails:
         regionclient  = boto3.client   ( 'cloudtrail', region_name=multitrails[each])
         selectors = regionclient.get_event_selectors(
@@ -450,4 +454,6 @@ def main(event, context):
       LOGGER.info('FAILED!')
       send_response(event, context, "FAILED", {
           "Message": "Exception during processing"})
+
+
 

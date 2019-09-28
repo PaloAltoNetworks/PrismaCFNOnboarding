@@ -124,7 +124,14 @@ Resources:
                   - cloudtrail:GetEventSelectors
                   - cloudtrail:DescribeTrails
                   - s3:CreateBucket
-                  - s3:PutBucketPolicy
+                  - s3:ListBucketVersions
+                  - s3:ListBucket
+                  - s3:GetBucketPolicy
+                  - s3:HeadBucket
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketPolicyStatus
+                  - s3:GetBucketVersioning
+                  - s3:GetBucketAcl
                   - sts:GetCallerIdentity
                   - ec2:DescribeRegions
                   - ec2:CreateFlowLogs
@@ -142,6 +149,13 @@ Resources:
                   - logs:PutLogEvents
                 Effect: Allow
                 Resource: '*'
+              - Action:
+                - s3:PutBucketPolicy
+                Effect: Allow
+                Resource: !Join 
+                  - ''
+                  - - 'arn:aws:s3:::prismatrail-'
+                    - !Ref 'AWS::AcountId'
   LambdaFunction:
     Type: AWS::Lambda::Function
     Properties:
@@ -174,9 +188,9 @@ Resources:
             !Ref PrismaAccountGroup
           PRISMA_ACCOUNT:
             !Ref CreatePrismaAccount
-          PRISMA_VPC:
-            !If [ShouldCreateCloudTrail, true, false]
           PRISMA_CLOUDTRAIL:
+            !If [ShouldCreateCloudTrail, true, false]
+          PRISMA_VPC:
             !If [ShouldCreateVpcFlowLogs, true, false]
           EXTERNAL_ID:
             !Ref ExternalID
