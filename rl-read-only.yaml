@@ -42,6 +42,7 @@ Parameters:
     Description: 'Specify the Prisma account group name'
     MinLength: '5'
     AllowedPattern: '[a-zA-Z0-9\=\,\.\@\:\/\-_\s]*'
+    Default: 'Default Account Group'
   CreatePrismaAccount:
     Type: String
     Description: 'Set to true to create Prisma account, set to false to just update AWS settings (including role)'

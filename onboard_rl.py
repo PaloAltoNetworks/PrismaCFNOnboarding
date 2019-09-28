@@ -235,6 +235,7 @@ def create_trail():
         print(e)
 
     print("creating CloudTrail")
+    sleep(10)
     try:
       response = ctClient.create_trail(
         Name="PrismaTrail",
