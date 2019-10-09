@@ -101,6 +101,8 @@ Resources:
                   - logs:GetLogEvents
                   - elasticmapreduce:ListSecurityConfigurations
                   - sns:listSubscriptions
+                  - mq:ListBrokers
+                  - mq:DescribeBroker 
                 Effect: Allow
                 Resource: '*'
       RoleName: !Ref 'PrismaRoleName'
