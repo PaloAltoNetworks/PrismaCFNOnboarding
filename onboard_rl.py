@@ -25,7 +25,6 @@ multiAlltrails = {}
 
 iamClient   = boto3.client   ( 'iam')
 ec2Client   = boto3.client   ( 'ec2')
-ctClient    = boto3.client   ( 'cloudtrail')
 account_id = boto3.client('sts').get_caller_identity().get('Account')
 s3 = boto3.resource('s3')
 
@@ -41,8 +40,10 @@ globalVars['customerName']          = os.environ["PRISMA_CUSTOMER_NAME"]
 globalVars['accountname']           = os.environ["PRISMA_ACCOUNT_NAME"]
 globalVars['accountgroup']        = os.environ["PRISMA_ACCOUNT_GROUP"]
 globalVars['createacct']            = os.environ["PRISMA_ACCOUNT"]
+globalVars['cf-region']             = os.environ["CF_REGION"]
 globalVars['accountgroupid']	    = None
 
+ctClient    = boto3.client   ('cloudtrail', region_name=globalVars['cf-region'])
 if os.environ["PRISMA_TENANT"]=="app":
   tenant="api"
 elif os.environ["PRISMA_TENANT"]=="app2":
@@ -224,10 +225,15 @@ def create_trail():
       print("Bucket exists")
     else:
       print("Bucket Doesn't exist")
-      s3_client = boto3.client('s3', region_name = 'us-east-1')
-      s3_client.create_bucket(Bucket=bucket,)
+      s3_client = boto3.client('s3', region_name = globalVars['cf-region'])
+      if globalVars['cf-region'] == 'us-east-1':
+        s3_client.create_bucket(Bucket=bucket,)
+      else:
+        location = {'LocationConstraint': globalVars['cf-region']
+        s3_client.create_bucket(Bucket=bucket,
+                                CreateBucketConfiguration=location)}
       try:
-        s3_client = boto3.client('s3', region_name = 'us-east-1')
+        s3_client = boto3.client('s3', region_name = globalVars['cf-region'])
         s3_client.put_bucket_policy(
           Bucket=(bucket),
           Policy=S3BucketPolicy)

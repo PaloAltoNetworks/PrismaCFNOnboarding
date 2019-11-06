@@ -199,6 +199,8 @@ Resources:
             !Ref ExternalID
           ROLE_NAME:
             !Ref PrismaRoleName
+          CF_REGION:
+            !Ref AWS::Region
   OnboardScript:
     Type: Custom::OnboardPrismaScript
     Properties:
