@@ -166,7 +166,7 @@ Resources:
       Description: Onboarding Script for Prisma
       Runtime: python3.7
       Code:
-        S3Bucket: "onboardprisma"
+        S3Bucket: "onboardprismaohio"
         S3Key: onboard.zip
       Handler: onboard_rl.main
       MemorySize: 128

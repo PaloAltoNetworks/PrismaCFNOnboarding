@@ -229,9 +229,8 @@ def create_trail():
       if globalVars['cf-region'] == 'us-east-1':
         s3_client.create_bucket(Bucket=bucket,)
       else:
-        location = {'LocationConstraint': globalVars['cf-region']
-        s3_client.create_bucket(Bucket=bucket,
-                                CreateBucketConfiguration=location)}
+        location = {'LocationConstraint': globalVars['cf-region']}
+        s3_client.create_bucket(Bucket=bucket, CreateBucketConfiguration=location)
       try:
         s3_client = boto3.client('s3', region_name = globalVars['cf-region'])
         s3_client.put_bucket_policy(
