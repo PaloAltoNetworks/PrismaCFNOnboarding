@@ -249,7 +249,7 @@ def create_trail():
         IsMultiRegionTrail=True,
         IncludeGlobalServiceEvents=True
         )
-      ctClient.start_logging(Name="arn:aws:cloudtrail:us-east-1:%s:trail/PrismaTrail" % account_id)
+      ctClient.start_logging(Name="arn:aws:cloudtrail:%s:%s:trail/PrismaTrail" % globalVars['cf-region'], account_id)
     except ClientError as e:
       if e.response['Error']['Code'] == 'TrailAlreadyExistsException':
         print('Trail Already Exists... Continuing')
