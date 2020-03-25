@@ -87,22 +87,32 @@ Resources:
             Version: '2012-10-17'
             Statement:
               - Action:
+                  - mq:DescribeBroker
                   - apigateway:GET
                   - cognito-identity:ListTagsForResource
                   - cognito-idp:ListTagsForResource
+                  - ecr:DescribeImages
+                  - ecr:GetLifecyclePolicy
+                  - directconnect:DescribeDirectConnectGateways
                   - elasticbeanstalk:ListTagsForResource
                   - elasticfilesystem:DescribeTags
-                  - glacier:ListTagsForVault
                   - glacier:GetVaultLock
+                  - glacier:ListTagsForVault
+                  - glue:GetSecurityConfigurations
+                  - logs:GetLogEvents
+                  - mq:listBrokers
+                  - mq:describeBroker
+                  - ram:GetResourceShares
                   - secretsmanager:DescribeSecret
                   - ssm:GetParameters
                   - ssm:ListTagsForResource
                   - sqs:SendMessage
-                  - logs:GetLogEvents
                   - elasticmapreduce:ListSecurityConfigurations
                   - sns:listSubscriptions
-                  - mq:ListBrokers
-                  - mq:DescribeBroker 
+                  - wafv2:ListResourcesForWebACL
+                  - wafv2:ListWebACLs
+                  - waf-regional:ListResourcesForWebACL
+                  - waf-regional:ListWebACLs-  
                 Effect: Allow
                 Resource: '*'
       RoleName: !Ref 'PrismaRoleName'
